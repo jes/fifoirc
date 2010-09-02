@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <netdb.h>
+#include <ctype.h>
 #include <poll.h>
 #include <time.h>
 
@@ -121,12 +122,25 @@ static int get_line(int fd, char *buf, int len) {
   return n == 1 ? 0 : -1;
 }
 
+static void safe_print(char c, const char *text) {
+  const char *p;
+
+  printf("%c ", c);
+
+  for(p = text; *p; p++) {
+    if(isprint(*p)) putchar(*p);
+    else printf("\\x%02x", *p);
+  }
+
+  putchar('\n');
+}
+
 static int irc_write(int fd, const char *text) {
   char msg[BUFLEN];
 
   snprintf(msg, BUFLEN, "%s\r\n", text);
 
-  if(verbose > IRC_MSG) printf("> %s\n", text);
+  if(verbose > IRC_MSG) safe_print('>', text);
 
   return write(fd, msg, strlen(msg));
 }
@@ -170,7 +184,7 @@ static void irc_handle(void) {
   if(get_line(irc_fd, line, BUFLEN) == -1) irc_disconnect();
   if((p = strpbrk(line, "\r\n"))) *p = '\0';
 
-  if(verbose > IRC_MSG) printf("< %s\n", line);
+  if(verbose > IRC_MSG) safe_print('<', line);
 
   recv_time = time(NULL);
 
