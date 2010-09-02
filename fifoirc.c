@@ -295,8 +295,5 @@ int main(int argc, char **argv) {
 
   quit(0);
 
-  close(irc_fd);
-  close(fifo_fd);
-
   return 0;
 }
