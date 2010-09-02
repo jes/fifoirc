@@ -21,7 +21,7 @@
 #define INFO     0
 #define IRC_MSG  1
 
-#define BUFLEN 4096
+#define BUFLEN 1024
 
 static char *server = "irc.freenode.net";
 static char *channel = "#maximilian";
@@ -54,27 +54,27 @@ static void usage(void) {
   exit(0);
 }
 
-static int make_pipe(int fd, const char *path) {
+static int make_fifo(void) {
   struct stat buf;
 
-  if(fd != -1) close(fd);
+  if(fifo_fd != -1) close(fifo_fd);
 
-  if(stat(path, &buf) != -1) {
+  if(stat(fifo, &buf) != -1) {
     if(!S_ISFIFO(buf.st_mode)) {
-      fprintf(stderr, "fifoirc: %s: exists and is not a fifo\n", path);
+      fprintf(stderr, "fifoirc: %s: exists and is not a fifo\n", fifo);
       return -1;
     }
   } else {
-    if(mkfifo(path, S_IRWXU) == -1) {
-      fprintf(stderr, "fifoirc: mkfifo %s: %s\n", path, strerror(errno));
+    if(mkfifo(fifo, S_IRWXU) == -1) {
+      fprintf(stderr, "fifoirc: mkfifo %s: %s\n", fifo, strerror(errno));
       return -1;
     }
   }
 
-  fd = open(path, O_RDONLY | O_NONBLOCK, 0);
-  if(fd == -1) fprintf(stderr, "fifoirc: open %s: %s\n", path, strerror(errno));
+  fifo_fd = open(fifo, O_RDONLY | O_NONBLOCK, 0);
+  if(fifo_fd == -1) fprintf(stderr, "fifoirc: open %s: %s\n", fifo, strerror(errno));
 
-  return fd;
+  return 0;
 }
 
 static int make_tcp(const char *host, unsigned short port) {
@@ -265,8 +265,7 @@ int main(int argc, char **argv) {
 
   if(!fullname) fullname = nickname;
 
-  fifo_fd = make_pipe(fifo_fd, fifo);
-  if(fifo_fd == -1) return 1;
+  if(make_fifo() == -1) return 1;
   if(verbose > INFO) printf(" -- fifo at %s\n", fifo);
 
   irc_connect();
@@ -297,10 +296,8 @@ int main(int argc, char **argv) {
       irc_write(irc_fd, msg);
     } else {
       if(fd[0].revents & POLLIN) fifo_handle();
-      if(fd[0].revents & POLLHUP) {
-        fifo_fd = make_pipe(fifo_fd, fifo);
-        if(fifo_fd == -1) break;
-      }
+      if(fd[0].revents & POLLHUP)
+        if(make_fifo() == -1) break;
 
       if(fd[1].revents & POLLIN) irc_handle();
       if(fd[1].revents & POLLHUP) irc_disconnect();
