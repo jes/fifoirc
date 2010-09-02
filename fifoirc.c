@@ -26,7 +26,7 @@
 static char *server = "irc.freenode.net";
 static char *channel = "#maximilian";
 static char *nickname;
-static unsigned short port = 6667;
+static uint16_t port = 6667;
 static char *fifo, *fullname, *nspasswd;
 static int verbose, reconnect;
 
@@ -77,7 +77,7 @@ static int make_fifo(void) {
   return 0;
 }
 
-static int make_tcp(const char *host, unsigned short port) {
+static int make_tcp(const char *host, uint16_t port) {
   struct sockaddr_in addr;
   struct hostent *he;
   int fd;
@@ -114,7 +114,7 @@ static int make_tcp(const char *host, unsigned short port) {
 }
 
 static int get_line(int fd, char *buf, int len) {
-  int n;
+  ssize_t n;
 
   while(--len && (n = read(fd, buf, 1)) == 1 && *buf++ != '\n');
   *buf = '\0';
@@ -135,7 +135,7 @@ static void safe_print(char c, const char *text) {
   putchar('\n');
 }
 
-static int irc_write(int fd, const char *text) {
+static ssize_t irc_write(int fd, const char *text) {
   char msg[BUFLEN];
 
   snprintf(msg, BUFLEN, "%s\r\n", text);
@@ -149,7 +149,7 @@ static void irc_connect(void) {
   char msg[BUFLEN];
 
   irc_fd = make_tcp(server, port);
-  if(irc_fd == -1) exit(1);
+  if(irc_fd == -1) exit(EXIT_FAILURE);
 
   snprintf(msg, BUFLEN, "NICK %s", nickname);
   irc_write(irc_fd, msg);
@@ -174,7 +174,7 @@ static void irc_disconnect(void) {
   fprintf(stderr, "fifoirc: disconnection from %s\n", server);
 
   if(reconnect) irc_connect();
-  else exit(1);
+  else exit(EXIT_FAILURE);
 }
 
 static void irc_handle(void) {
@@ -204,7 +204,7 @@ static void fifo_handle(void) {
   char *p;
   int len;
 
-  len = sprintf(line, "PRIVMSG %s :", channel);
+  len = snprintf(line, 256, "PRIVMSG %s :", channel);
   p = line + len;
   len = 256 - len;
 
@@ -225,6 +225,7 @@ int main(int argc, char **argv) {
   int c;
   struct pollfd fd[2];
   char msg[BUFLEN];
+  char *home;
 
   if(argc <= 1) usage();
 
@@ -248,8 +249,9 @@ int main(int argc, char **argv) {
   if(optind != argc) usage();
 
   if(!fifo) {
-    fifo = malloc(strlen(getenv("HOME")) + strlen("/irc-pipe") + 1);
-    sprintf(fifo, "%s/irc-pipe", getenv("HOME"));
+    if(!(home = getenv("HOME"))) home = "/tmp";
+    fifo = malloc(strlen(home) + strlen("/irc-pipe") + 1);
+    sprintf(fifo, "%s/irc-pipe", home);
   }
 
   if(strlen(channel) > 200) {
