@@ -28,21 +28,22 @@ static char *server = "irc.freenode.net";
 static char *channel = "#maximilian";
 static char *nickname;
 static uint16_t port = 6667;
-static char *fifo, *fullname, *nspasswd;
+static char *fifo, *fullname, *nspasswd, *program;
 static int verbose, reconnect;
 
 static time_t recv_time;
 
-static int fifo_fd = -1, irc_fd = -1;
+static int fifo_fd = -1, irc_fd = -1, program_fd = -1;
 
 static void usage(void) {
   puts("fifoirc by James Stanley\n"
-       "Usage: fifoirc [-c <channel>] [-f <path to fifo>] [-F <full name>]\n"
-       "               [-n <nickname>] [-p <port>] [-P <nickserv password>]\n"
-       "               [-r] [-s <server>] [-vv]\n"
+       "Usage: fifoirc [-c <channel>] [-e <program>] [-f <path to fifo>]\n"
+       "               [-F <full name>] [-n <nickname>] [-p <port>]\n"
+       "               [-P <nickserv password>] [-r] [-s <server>] [-vv]\n"
        "\n"
        "Options:\n"
        " -c  channel to join\n"
+       " -e  program to pipe IRC text to\n"
        " -f  path to the FIFO to use\n"
        " -F  IRC full name\n"
        " -n  IRC nickname\n"
@@ -73,7 +74,41 @@ static int make_fifo(void) {
   }
 
   fifo_fd = open(fifo, O_RDONLY | O_NONBLOCK, 0);
-  if(fifo_fd == -1) fprintf(stderr, "fifoirc: open %s: %s\n", fifo, strerror(errno));
+  if(fifo_fd == -1)
+    fprintf(stderr, "fifoirc: open %s: %s\n", fifo, strerror(errno));
+
+  return 0;
+}
+
+static int start_program(void) {
+  pid_t pid;
+  int fd[2];
+
+  if(program_fd != -1) close(program_fd);
+
+  if(socketpair(AF_UNIX, SOCK_STREAM, 0, fd) == -1) {
+    perror("fifoirc: socketpair");
+    return -1;
+  }
+
+  program_fd = fd[1];
+
+  if((pid = fork()) == -1) {
+    perror("fifoirc: fork");
+    return -1;
+  }
+
+  if(pid == 0) {
+    dup2(fd[0], STDIN_FILENO);
+    dup2(fd[0], STDOUT_FILENO);
+
+    execl("/bin/sh", "sh", "-c", program, NULL);
+
+    fprintf(stderr, "fifoirc: execl /bin/sh -c %s: %s\n", program,
+            strerror(errno));
+    kill(getppid(), SIGTERM);
+    exit(1);
+  }
 
   return 0;
 }
@@ -180,10 +215,11 @@ static void irc_disconnect(void) {
 
 static void irc_handle(void) {
   char line[BUFLEN];
+  char *endline;
   char *p;
 
   if(get_line(irc_fd, line, BUFLEN) == -1) irc_disconnect();
-  if((p = strpbrk(line, "\r\n"))) *p = '\0';
+  if((endline = strpbrk(line, "\r\n"))) *endline = '\0';
 
   if(verbose > IRC_MSG) safe_print('<', line);
 
@@ -193,9 +229,18 @@ static void irc_handle(void) {
     line[1] = 'O';/* PING -> PONG */
     irc_write(irc_fd, line);
   }
+
+  p = strchr(line, ' ');
+  if(p && strncmp(p, " PRIVMSG ", 9) == 0) {
+    *endline = '\n';
+    *(endline + 1) = '\0';
+    if((p = strchr(p, ':'))) {
+      write(program_fd, p + 1, strlen(p + 1));
+    }
+  }
 }
 
-static void fifo_handle(void) {
+static void text_handle(int fd) {
   /* the 256-byte buffer ensures that
    *  a.) the message we send to the server will fit in IRC's 512 byte limit
    *  b.) the message the server sends to other clients which includes our
@@ -209,7 +254,7 @@ static void fifo_handle(void) {
   p = line + len;
   len = 256 - len;
 
-  get_line(fifo_fd, p, len);
+  get_line(fd, p, len);
 
   if((p = strchr(line, '\n'))) *p = '\0';
 
@@ -223,8 +268,8 @@ static void quit(int sig) {
 }
 
 int main(int argc, char **argv) {
-  int c;
-  struct pollfd fd[2];
+  int c, i;
+  struct pollfd fd[3];
   char msg[BUFLEN];
   char *home;
 
@@ -232,9 +277,10 @@ int main(int argc, char **argv) {
 
   opterr = 0;
 
-  while((c = getopt(argc, argv, "c:f:F:n:p:P:rs:v")) != -1) {
+  while((c = getopt(argc, argv, "c:e:f:F:n:p:P:rs:v")) != -1) {
     switch(c) {
     case 'c': channel = optarg;    break;
+    case 'e': program = optarg;    break;
     case 'f': fifo = optarg;       break;
     case 'F': fullname = optarg;   break;
     case 'n': nickname = optarg;   break;
@@ -271,6 +317,9 @@ int main(int argc, char **argv) {
   if(make_fifo() == -1) return 1;
   if(verbose > INFO) printf(" -- fifo at %s\n", fifo);
 
+  if(program && start_program() == -1) return 1;
+  if(verbose > INFO) printf(" -- started '%s'\n", program);
+
   irc_connect();
 
   signal(SIGINT, quit);
@@ -278,12 +327,20 @@ int main(int argc, char **argv) {
   signal(SIGHUP, quit);
 
   while(1) {
-    fd[0].fd = fifo_fd;
-    fd[0].events = POLLIN;
-    fd[1].fd = irc_fd;
-    fd[1].events = POLLIN;
+    i = 0;
+    fd[i].fd = fifo_fd;
+    fd[i].events = POLLIN;
+    i++;
+    fd[i].fd = irc_fd;
+    fd[i].events = POLLIN;
+    i++;
+    if(program) {
+      fd[i].fd = program_fd;
+      fd[i].events = POLLIN;
+      i++;
+    }
 
-    c = poll(fd, 2, 600000);
+    c = poll(fd, i, 600000);
 
     if(c == -1) {
       perror("fifoirc: poll");
@@ -298,12 +355,18 @@ int main(int argc, char **argv) {
       snprintf(msg, BUFLEN, "PING :%s", server);
       irc_write(irc_fd, msg);
     } else {
-      if(fd[0].revents & POLLIN) fifo_handle();
+      if(fd[0].revents & POLLIN) text_handle(fifo_fd);
       if(fd[0].revents & POLLHUP)
         if(make_fifo() == -1) break;
 
       if(fd[1].revents & POLLIN) irc_handle();
       if(fd[1].revents & POLLHUP) irc_disconnect();
+
+      if(program) {
+        if(fd[2].revents & POLLIN) text_handle(program_fd);
+        if(fd[2].revents & POLLHUP)
+          if(start_program() == -1) break;
+      }
     }
   }
 
