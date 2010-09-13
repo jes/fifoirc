@@ -2,9 +2,9 @@
 
    James Stanley 2010 */
 
+#include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
@@ -102,7 +102,7 @@ static int start_program(void) {
     dup2(fd[0], STDIN_FILENO);
     dup2(fd[0], STDOUT_FILENO);
 
-    execl("/bin/sh", "sh", "-c", program, NULL);
+    execl("/bin/sh", "sh", "-c", program, (void *)0);
 
     fprintf(stderr, "fifoirc: execl /bin/sh -c %s: %s\n", program,
             strerror(errno));
