@@ -267,6 +267,10 @@ static void quit(int sig) {
   exit(0);
 }
 
+static void unlink_fifo(void) {
+  unlink(fifo);
+}
+
 int main(int argc, char **argv) {
   int c, i;
   struct pollfd fd[3];
@@ -316,6 +320,8 @@ int main(int argc, char **argv) {
 
   if(make_fifo() == -1) return 1;
   if(verbose > INFO) printf(" -- fifo at %s\n", fifo);
+
+  atexit(unlink_fifo);
 
   if(program && start_program() == -1) return 1;
   if(verbose > INFO) printf(" -- started '%s'\n", program);
