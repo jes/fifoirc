@@ -276,6 +276,7 @@ int main(int argc, char **argv) {
   struct pollfd fd[3];
   char msg[BUFLEN];
   char *home;
+  char *p;
 
   if(argc <= 1) usage();
 
@@ -295,6 +296,16 @@ int main(int argc, char **argv) {
     case 'v': verbose++;           break;
     default:  usage();             break;
     }
+  }
+
+  /* keep passwords out of process lists */
+  if(nspasswd && strlen(nspasswd) > 1) {
+    p = nspasswd;
+    nspasswd = strdup(nspasswd);
+
+    p[0] = '?';
+    for(i = 1; p[i]; i++)
+      p[i] = '\0';
   }
 
   if(optind != argc) usage();
