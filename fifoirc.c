@@ -30,6 +30,7 @@ static char *nickname;
 static uint16_t port = 6667;
 static char *fifo, *fullname, *nspasswd, *program;
 static int verbose, reconnect;
+static int fifo_perms = 0666;
 
 static time_t recv_time;
 
@@ -38,14 +39,16 @@ static int fifo_fd = -1, irc_fd = -1, program_fd = -1;
 static void usage(void) {
   puts("fifoirc by James Stanley\n"
        "Usage: fifoirc [-c <channel>] [-e <program>] [-f <path to fifo>]\n"
-       "               [-F <full name>] [-n <nickname>] [-p <port>]\n"
-       "               [-P <nickserv password>] [-r] [-s <server>] [-vv]\n"
+       "               [-F <full name>] [-m <mode>] [-n <nickname>]\n"
+       "               [-p <port>] [-P <nickserv password>] [-r]\n"
+       "               [-s <server>] [-vv]\n"
        "\n"
        "Options:\n"
        " -c  channel to join\n"
        " -e  program to pipe IRC text to\n"
        " -f  path to the FIFO to use\n"
        " -F  IRC full name\n"
+       " -m  FIFO permission modes in octal (default: 0666)\n"
        " -n  IRC nickname\n"
        " -p  port on the IRC server\n"
        " -P  password to authenticate with NickServ\n"
@@ -67,7 +70,8 @@ static int make_fifo(void) {
       return -1;
     }
   } else {
-    if(mkfifo(fifo, S_IRWXU) == -1) {
+    umask(0);
+    if(mkfifo(fifo, fifo_perms) == -1) {
       fprintf(stderr, "fifoirc: mkfifo %s: %s\n", fifo, strerror(errno));
       return -1;
     }
@@ -282,19 +286,20 @@ int main(int argc, char **argv) {
 
   opterr = 0;
 
-  while((c = getopt(argc, argv, "c:e:f:F:n:p:P:rs:v")) != -1) {
+  while((c = getopt(argc, argv, "c:e:f:F:m:n:p:P:rs:v")) != -1) {
     switch(c) {
-    case 'c': channel = optarg;    break;
-    case 'e': program = optarg;    break;
-    case 'f': fifo = optarg;       break;
-    case 'F': fullname = optarg;   break;
-    case 'n': nickname = optarg;   break;
-    case 'p': port = atoi(optarg); break;
-    case 'P': nspasswd = optarg;   break;
-    case 'r': reconnect = 1;       break;
-    case 's': server = optarg;     break;
-    case 'v': verbose++;           break;
-    default:  usage();             break;
+    case 'c': channel = optarg;                      break;
+    case 'e': program = optarg;                      break;
+    case 'f': fifo = optarg;                         break;
+    case 'F': fullname = optarg;                     break;
+    case 'm': fifo_perms = strtoul(optarg, NULL, 8); break;
+    case 'n': nickname = optarg;                     break;
+    case 'p': port = atoi(optarg);                   break;
+    case 'P': nspasswd = optarg;                     break;
+    case 'r': reconnect = 1;                         break;
+    case 's': server = optarg;                       break;
+    case 'v': verbose++;                             break;
+    default:  usage();                               break;
     }
   }
 
