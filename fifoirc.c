@@ -221,6 +221,7 @@ static void irc_disconnect(void) {
 
 static void irc_handle(void) {
   char line[BUFLEN];
+  char msg[BUFLEN];
   char *endline;
   char *p;
 
@@ -247,18 +248,18 @@ static void irc_handle(void) {
 }
 
 static void text_handle(int fd) {
-  /* the 480-byte buffer ensures that
+  /* the 450-byte buffer ensures that
    *  a.) the message we send to the server will fit in IRC's 512 byte limit
    *  b.) the message the server sends to other clients which includes our
    *      full nick!username@host string will fit in 512 bytes
    */
-  char line[480];
+  char line[450];
   char *p;
   int len;
 
-  len = snprintf(line, 480, "PRIVMSG %s :", channel);
+  len = snprintf(line, 450, "PRIVMSG %s :", channel);
   p = line + len;
-  len = 480 - len;
+  len = 450 - len;
 
   get_line(fd, p, len);
 
