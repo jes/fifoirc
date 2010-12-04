@@ -222,6 +222,7 @@ static void irc_disconnect(void) {
 static void irc_handle(void) {
   char line[BUFLEN];
   char msg[BUFLEN];
+  char *nick;
   char *endline;
   char *p;
 
@@ -243,6 +244,14 @@ static void irc_handle(void) {
     *(endline + 1) = '\0';
     if((p = strchr(p, ':'))) {
       write(program_fd, p + 1, strlen(p + 1));
+    }
+
+    /* handle ctcp version */
+    if(strcmp(p, ":\x01VERSION\x01\n") == 0) {
+      nick = line + 1;/* skip the leading colon */
+      if((p = strchr(line, '!'))) *p = '\0';/* lose everything after the nick */
+      snprintf(msg, BUFLEN, "NOTICE %s :\x01VERSION fifoirc\x01", nick);
+      irc_write(irc_fd, msg);
     }
   }
 }
