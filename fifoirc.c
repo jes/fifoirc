@@ -45,7 +45,7 @@ static void usage(void) {
        "\n"
        "Options:\n"
        " -c  channel to join\n"
-       " -e  program to pipe IRC text to\n"
+       " -e  program to pipe IRC text to (note: uses 'sh -c')\n"
        " -f  path to the FIFO to use\n"
        " -F  IRC full name\n"
        " -m  FIFO permission modes in octal (default: 0666)\n"
@@ -78,8 +78,10 @@ static int make_fifo(void) {
   }
 
   fifo_fd = open(fifo, O_RDONLY | O_NONBLOCK, 0);
-  if(fifo_fd == -1)
+  if(fifo_fd == -1) {
     fprintf(stderr, "fifoirc: open %s: %s\n", fifo, strerror(errno));
+    return -1;
+  }
 
   return 0;
 }
@@ -268,7 +270,7 @@ static void text_handle(int fd) {
 static void quit(int sig) {
   irc_write(irc_fd, "QUIT");
 
-  exit(0);
+  exit(EXIT_SUCCESS);
 }
 
 static void unlink_fifo(void) {
@@ -322,7 +324,7 @@ int main(int argc, char **argv) {
   }
 
   if(strlen(channel) > 200) {
-    fprintf(stderr, "fifoirc: %s: channels must be at most 200 characters.\n",
+    fprintf(stderr, "fifoirc: %s: channels must be at most 200 characters\n",
             channel);
     return 1;
   }
