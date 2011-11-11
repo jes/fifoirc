@@ -213,6 +213,8 @@ static void irc_connect(void) {
 }
 
 static void irc_disconnect(void) {
+  close(irc_fd);
+
   fprintf(stderr, "fifoirc: disconnection from %s\n", server);
 
   if(reconnect) irc_connect();
