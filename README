@@ -20,7 +20,7 @@ install it.
 
 A list of options accepted by fifoirc can be obtained by running `fifoirc' with
 no arguments. Generally, usage will be like so:
-  $ fifoirc -s irc.freenode.net -n fifo_client -c "#maximilian" -f ~/irc-pipe
+  $ fifoirc -s irc.freenode.net -n nickname -c "#maximilian" -f ~/irc-pipe
 Fifoirc will make the pipe at `~/irc-pipe', connect to `irc.freenode.net', set
 the nickname to `nickname', and join `#maximilian'. The quotes around
 `#maximilian' are to prevent the shell from treating everything after the hash
