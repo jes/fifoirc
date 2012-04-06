@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>fifoirc by jes</title>
+    
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>fifoirc</h1>
+        <p>Creates a fifo that can be written to, producing text in an IRC channel.</p>
+        <p class="view"><a href="https://github.com/jes/fifoirc">View the Project on GitHub <small>jes/fifoirc</small></a></p>
+        <ul>
+          <li><a href="https://github.com/jes/fifoirc/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/jes/fifoirc/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/jes/fifoirc">Fork On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h3>About</h3>
+
+<p>fifoirc is an IRC bot that can be used to make a fifo connected to an IRC
+channel. Any text written to this fifo will be spoken in the channel by
+the bot.</p>
+
+<h3>Compiling</h3>
+
+<p>Running <code>make</code> from the directory containing fifoirc.c should be enough to
+compile the program. This can be followed by <code>make install</code> if you want to
+install it.</p>
+
+<h3>Usage</h3>
+
+<p>A list of options accepted by fifoirc can be obtained by running <code>fifoirc</code> with
+no arguments. Generally, usage will be like so:</p>
+
+<pre><code>  $ fifoirc -s irc.freenode.net -n nickname -c "#maximilian" -f ~/irc-pipe
+</code></pre>
+
+<p>Fifoirc will make the pipe at <code>~/irc-pipe</code>, connect to <code>irc.freenode.net</code>, set
+the nickname to <code>nickname</code>, and join <code>#maximilian</code>. The quotes around
+<code>#maximilian</code> are to prevent the shell from treating everything after the hash
+(#) as a comment. From this point, any text written to ~/irc-pipe will be sent
+by fifoirc to the IRC channel.</p>
+
+<p>If you want fifoirc to authenticate with NickServ, use the -P option.</p>
+
+<h3>Contact</h3>
+
+<p>If you find a bug or just want to contact me for any reason, send an email to
+  James Stanley <a href="mailto:james@incoherency.co.uk">james@incoherency.co.uk</a>
+or find me on IRC as the user <code>jamesstanley</code> on <code>irc.freenode.net</code>. I am
+usually in the channel <code>#maximilian</code>, so you'll probably find me in there.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/jes">jes</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+  </body>
+</html>
