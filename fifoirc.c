@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <signal.h>
@@ -35,6 +36,8 @@ static int fifo_perms = 0666;
 static time_t recv_time;
 
 static int fifo_fd = -1, irc_fd = -1, program_fd = -1;
+
+static pid_t childpid;
 
 static void usage(void) {
   puts("fifoirc by James Stanley\n"
@@ -87,7 +90,6 @@ static int make_fifo(void) {
 }
 
 static int start_program(void) {
-  pid_t pid;
   int fd[2];
 
   if(program_fd != -1) close(program_fd);
@@ -99,12 +101,12 @@ static int start_program(void) {
 
   program_fd = fd[1];
 
-  if((pid = fork()) == -1) {
+  if((childpid = fork()) == -1) {
     perror("fifoirc: fork");
     return -1;
   }
 
-  if(pid == 0) {
+  if(childpid == 0) {
     dup2(fd[0], STDIN_FILENO);
     dup2(fd[0], STDOUT_FILENO);
 
@@ -291,6 +293,7 @@ static void unlink_fifo(void) {
 
 int main(int argc, char **argv) {
   int c, i;
+  int status;
   struct pollfd fd[3];
   char msg[BUFLEN];
   char *home;
@@ -377,6 +380,10 @@ int main(int argc, char **argv) {
     }
 
     c = poll(fd, i, 600000);
+
+    /* restart the child if it died */
+    if(program && waitpid(childpid, &status, WNOHANG))
+        if(start_program() == -1) break;
 
     if(c == -1) {
       perror("fifoirc: poll");
